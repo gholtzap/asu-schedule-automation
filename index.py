@@ -1,4 +1,3 @@
-
 import os
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 from flask import Flask, request, redirect, url_for, render_template, session, flash
@@ -21,11 +20,27 @@ from pytz import timezone
 import requests
 from io import BytesIO
 import base64
+import json
+from oauthlib.oauth2.rfc6749.errors import MissingCodeError
+from dotenv import load_dotenv
+import random
+import string
+
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-CLIENT_SECRETS_FILE = 'credentials.json'
+load_dotenv()
+
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+
+if not app.secret_key:
+    raise ValueError("No SECRET_KEY set for Flask application")
+
+CLIENT_SECRETS_FILE = os.getenv('GOOGLE_CREDENTIALS_FILENAME')
+
+if not CLIENT_SECRETS_FILE:
+    raise ValueError("No CLIENT_SECRETS_FILE found in the .env file")
 
 def get_calendar_service(credentials):
     service = build('calendar', 'v3', credentials=credentials)
@@ -284,21 +299,50 @@ def add_events_to_calendar(events, credentials):
         service.events().insert(calendarId=calendar_id, body=event_body).execute()
         logging.info(f"Added event: {event['summary']}")
 
-@app.route('/oauth2callback')
-def oauth2callback():
-    state = session.get('state', '')
+@app.route('/authorize')
+def authorize():
+    state = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
+    session['state'] = state
     flow = Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILE,
         scopes=SCOPES,
-        state=state)
+        state=state
+    )
     flow.redirect_uri = url_for('oauth2callback', _external=True)
+
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent'
+    )
+
+    return redirect(authorization_url)
+
+@app.route('/oauth2callback')
+def oauth2callback():
+    state = session.get('state')
+    flow = Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE,
+        scopes=SCOPES,
+        state=state
+    )
+    flow.redirect_uri = url_for('oauth2callback', _external=True)
+
     authorization_response = request.url
-    flow.fetch_token(authorization_response=authorization_response)
-    
+    logging.info(f"Authorization Response URL: {authorization_response}")
+
+    try:
+        flow.fetch_token(authorization_response=authorization_response)
+    except MissingCodeError as e:
+        logging.error(f"Missing authorization code in the response: {e}")
+        flash("Authorization failed. Missing code parameter in the response.")
+        return redirect(url_for('upload_image'))
+
     credentials = flow.credentials
     session['credentials'] = credentials_to_dict(credentials)
     flash('Authentication successful! Please confirm your events.')
     return redirect(url_for('confirm_events'))
+
 
 def credentials_to_dict(credentials):
     return {'token': credentials.token,
@@ -399,11 +443,10 @@ def confirm_events():
                 credentials.refresh(Request())
                 session['credentials'] = credentials_to_dict(credentials)
             else:
-                return redirect(url_for('oauth2callback'))
-        
+                return redirect(url_for('authorize')) 
         add_events_to_calendar(selected_events, credentials)
         flash('Selected events added to your Google Calendar.')
-        session.pop('events', None)  
+        session.pop('events', None)
         return redirect(url_for('upload_image'))
     
     reverse_day_mapping = {
