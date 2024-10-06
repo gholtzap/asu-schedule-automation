@@ -303,8 +303,14 @@ def add_events_to_calendar(events, credentials):
 def authorize():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
     session['state'] = state
-    flow = Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE,
+    CLIENT_SECRETS_JSON = os.getenv('GOOGLE_CLIENT_SECRETS_JSON')
+    if CLIENT_SECRETS_JSON:
+        CLIENT_SECRETS = json.loads(CLIENT_SECRETS_JSON)
+    else:
+        raise ValueError("No CLIENT_SECRETS_JSON found in environment variables")
+
+    flow = Flow.from_client_config(
+        CLIENT_SECRETS,
         scopes=SCOPES,
         state=state
     )
@@ -461,5 +467,3 @@ def confirm_events():
     for event in events:
         event['days_str'] = ', '.join([reverse_day_mapping.get(d, d) for d in event['days_of_week']])
     return render_template('confirm.html', events=events)
-if __name__ == '__main__':
-    app.run(debug=True)
