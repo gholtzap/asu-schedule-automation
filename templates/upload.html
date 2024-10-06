@@ -1,0 +1,77 @@
+<!-- this file is upload.html-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Schedule Image</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #paste_area {
+            width: 300px;
+            height: 200px;
+            border: 1px dashed #ccc;
+            text-align: center;
+            line-height: 200px;
+            margin-top: 10px;
+            color: #999;
+        }
+        #paste_area img {
+            max-width: 100%;
+            max-height: 100%;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Your Schedule</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="image">Upload Image File:</label><br>
+            <input type="file" id="image" name="image">
+        </div>
+        <br>
+        <div>
+            <label for="image_url">Or Enter Image URL:</label><br>
+            <input type="text" id="image_url" name="image_url" placeholder="http://example.com/image.png" style="width: 300px;">
+        </div>
+        <br>
+        <div>
+            <label for="paste_area">Or Paste Image Here:</label><br>
+            <div id="paste_area">Click here and press Ctrl+V to paste your image</div>
+            <input type="hidden" id="paste_data" name="paste_data">
+        </div>
+        <br>
+        <input type="submit" value="Upload">
+    </form>
+
+    <script>
+        // Handle paste event
+        document.getElementById('paste_area').addEventListener('paste', function (e) {
+            e.preventDefault();
+            var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            var blob = null;
+
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") === 0) {
+                    blob = items[i].getAsFile();
+                }
+            }
+
+            if (blob !== null) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('paste_data').value = event.target.result;
+                    document.getElementById('paste_area').innerHTML = '<img src="' + event.target.result + '">';
+                };
+                reader.readAsDataURL(blob);
+            } else {
+                alert("Please paste an image.");
+            }
+        });
+
+        // Make paste area focusable
+        document.getElementById('paste_area').setAttribute('tabindex', '0');
+    </script>
+</body>
+</html>

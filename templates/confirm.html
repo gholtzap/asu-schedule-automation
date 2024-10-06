@@ -1,0 +1,51 @@
+<!-- This file is confirm.html-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirm Events</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .event {
+            border-bottom: 1px solid #ccc;
+            padding: 10px 0;
+        }
+        .event label {
+            display: block;
+            margin-left: 25px;
+        }
+        .event input[type="checkbox"] {
+            margin-top: 5px;
+        }
+        .event strong {
+            font-size: 1.1em;
+        }
+        .event-details {
+            margin-left: 25px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Confirm Events to Add</h1>
+    <form action="/confirm" method="post">
+        {% for event in events %}
+        <div class="event">
+            <input type="checkbox" name="event" value="{{ event.id }}" id="event_{{ loop.index }}" checked>
+            <label for="event_{{ loop.index }}">
+                <strong>{{ event.summary }}</strong>
+            </label>
+            <div class="event-details">
+                <p><strong>Location:</strong> {{ event.location }}</p>
+                <p><strong>Start:</strong> {{ event.start.strftime('%Y-%m-%d %I:%M %p') }}</p>
+                <p><strong>End:</strong> {{ event.end.strftime('%Y-%m-%d %I:%M %p') }}</p>
+                <p><strong>Days:</strong> {{ event.days_str }}</p>
+            </div>
+        </div>
+        {% endfor %}
+        <br>
+        <input type="submit" value="Add Selected Events to Calendar">
+    </form>
+</body>
+</html>
