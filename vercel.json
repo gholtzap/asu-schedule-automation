@@ -14,7 +14,7 @@
   ],
   "functions": {
     "api/**": {
-      "excludeFiles": ["{.next,*.cache,node_modules,public,app}/**"]
+      "excludeFiles": ".next/**,*.cache/**,node_modules/**,public/**,app/**"
     }
   }
 }
